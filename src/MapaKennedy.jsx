@@ -54,6 +54,7 @@ const createIcon = (color, svgPath) =>
 // Rinas de iconos (Paths de Lucide)
 const paths = {
   building: '<rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="22"></line><line x1="13" y1="22" x2="13" y2="22"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="10" x2="20" y2="10"></line><line x1="4" y1="14" x2="20" y2="14"></line><line x1="4" y1="18" x2="20" y2="18"></line>',
+  hospital: '<rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M12 7v10"></path><path d="M7 12h10"></path>',
   heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>',
   users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
   briefcase: '<rect x="2" y="7" width="20" height="14" rx="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>',
@@ -64,7 +65,7 @@ const paths = {
 
 const iconConfigs = {
   SuperCADE: { color: '#2563eb', path: paths.building },
-  Salud: { color: '#ef4444', path: paths.heart },
+  Salud: { color: '#ef4444', path: paths.hospital },
   'Integración Social': { color: '#f97316', path: paths.users },
   'Desarrollo Local': { color: '#8b5cf6', path: paths.briefcase },
   Empleo: { color: '#10b981', path: paths.user },
@@ -778,13 +779,25 @@ export const MapaKennedy = () => {
                 if (code === 'all') {
                   setSelectedFeature(null);
                 } else {
+                  const selectedUpzOption = upzOptions.find(
+                    (u) => String(u.code) === String(code)
+                  );
+                  const indicatorsByName = selectedUpzOption
+                    ? socialZoneByName.get(
+                        String(selectedUpzOption.name || '').toUpperCase().trim()
+                      )
+                    : null;
                   const indicators =
+                    indicatorsByName ||
                     socialZoneByCode.get(normalizeUpzCode(code)) ||
                     socialZones.find((z) => String(z.id).includes(String(code).toLowerCase()));
                   if (indicators) {
                     setSelectedFeature({
                       ...indicators,
-                      name: indicators.name || `UPZ ${code}`,
+                      name:
+                        selectedUpzOption?.name && selectedUpzOption?.code
+                          ? `UPZ ${selectedUpzOption.code.replace('UPZ', '')} - ${selectedUpzOption.name}`
+                          : indicators.name || `UPZ ${code}`,
                       isUpz: true
                     });
                   }
@@ -825,16 +838,6 @@ export const MapaKennedy = () => {
               </div>
               <Switch checked={showPoverty} onChange={setShowPoverty} id="sw-poverty" />
             </div>
-          </div>
-
-          <div className="sidebar-section">
-            <h3 className="sidebar-section-title">
-              <span className="sidebar-title-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20v-6M6 20V10M18 20V4" /></svg>
-              </span>
-              Datos de Territorio
-            </h3>
-            <PovertyAccordion />
           </div>
 
           <div className="sidebar-section">
@@ -993,6 +996,16 @@ export const MapaKennedy = () => {
               <StatsCharts selectedFeature={selectedFeature} />
             </div>
           )}
+
+          <div className="sidebar-section">
+            <h3 className="sidebar-section-title">
+              <span className="sidebar-title-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20v-6M6 20V10M18 20V4" /></svg>
+              </span>
+              Datos de Territorio
+            </h3>
+            <PovertyAccordion />
+          </div>
         </aside>
 
         {/* Modal de Fuentes */}
