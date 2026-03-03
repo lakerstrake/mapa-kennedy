@@ -112,6 +112,49 @@ const kennedyBounds = L.latLngBounds(
   [4.660, -74.130]  // noreste aprox
 );
 
+const normalizeUpzCode = (value) =>
+  String(value ?? '')
+    .toUpperCase()
+    .replace('UPZ', '')
+    .replace(/\D/g, '');
+
+const pointInRing = (point, ring) => {
+  const [x, y] = point;
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    const intersects =
+      yi > y !== yj > y &&
+      x < ((xj - xi) * (y - yi)) / ((yj - yi) || Number.EPSILON) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+};
+
+const pointInPolygon = (point, rings) => {
+  if (!rings || rings.length === 0) return false;
+  if (!pointInRing(point, rings[0])) return false;
+  for (let i = 1; i < rings.length; i += 1) {
+    if (pointInRing(point, rings[i])) return false;
+  }
+  return true;
+};
+
+const geometryContainsPoint = (geometry, point) => {
+  if (!geometry) return false;
+  if (geometry.type === 'Polygon') {
+    return pointInPolygon(point, geometry.coordinates);
+  }
+  if (geometry.type === 'MultiPolygon') {
+    return geometry.coordinates.some((rings) => pointInPolygon(point, rings));
+  }
+  return false;
+};
+
+const featureContainsPoint = (feature, point) =>
+  geometryContainsPoint(feature?.geometry, point);
+
 // Ajusta el mapa según la selección de UPZ (o muestra toda Kennedy)
 const DataCard = ({ title, value, unit = '%', total, icon, progress, color = '#2563eb' }) => (
   <div className="data-card">
@@ -559,7 +602,7 @@ export const MapaKennedy = () => {
   const socialZoneByCode = useMemo(() => {
     const map = new Map();
     socialZones.forEach((zone) => {
-      const key = String(zone.upzCode || '').trim();
+      const key = normalizeUpzCode(zone.upzCode);
       if (key && !map.has(key)) {
         map.set(key, zone);
       }
@@ -622,38 +665,57 @@ export const MapaKennedy = () => {
     return socialZoneByName.get(upzName) || null;
   };
 
-  const filteredInstitutions = useMemo(() => {
-    return institutions.filter(
-      (inst) => selectedUpz === 'all' || String(inst.upzCode) === String(selectedUpz)
-    );
-  }, [selectedUpz]);
-
-  const upzColorMap = useMemo(() => {
-    // Paleta con 12 colores suaves y distintos para cada UPZ
-    const palette = [
-      '#fecaca', // rosa suave
-      '#fed7aa', // naranja suave
-      '#fef08a', // amarillo suave
-      '#bbf7d0', // verde menta
-      '#bfdbfe', // azul claro
-      '#e9d5ff', // lila
-      '#fbcfe8', // rosado pastel
-      '#fde68a', // ámbar suave
-      '#a5f3fc', // cian suave
-      '#ddd6fe', // violeta claro
-      '#fee2e2', // rojo muy claro
-      '#dcfce7', // verde claro
-    ];
-
+  const upzCentroidByCode = useMemo(() => {
     const map = new Map();
-    socialZones.forEach((zone, index) => {
-      const code = String(zone.upzCode);
-      if (!map.has(code)) {
-        map.set(code, palette[index % palette.length]);
-      }
+    if (!upzFeatures || upzFeatures.length === 0) return map;
+
+    upzFeatures.forEach((feature) => {
+      const code = normalizeUpzCode(feature?.properties?.UPlCodigo);
+      if (!code || map.has(code)) return;
+
+      const center = L.geoJSON(feature).getBounds().getCenter();
+      map.set(code, { lat: center.lat, lng: center.lng });
     });
+
     return map;
-  }, []);
+  }, [upzFeatures]);
+
+  const validatedInstitutions = useMemo(() => {
+    if (!upzFeatures || upzFeatures.length === 0) return institutions;
+
+    return institutions.reduce((acc, inst) => {
+      const point = [inst.lng, inst.lat];
+      const isInsideKennedy = upzFeatures.some((feature) =>
+        featureContainsPoint(feature, point)
+      );
+
+      if (isInsideKennedy) {
+        acc.push(inst);
+        return acc;
+      }
+
+      const targetUpzCode = normalizeUpzCode(inst.upzCode);
+      const centroid = upzCentroidByCode.get(targetUpzCode);
+      if (!centroid) return acc;
+
+      acc.push({
+        ...inst,
+        lat: centroid.lat,
+        lng: centroid.lng,
+        isRelocated: true,
+      });
+      return acc;
+    }, []);
+  }, [upzFeatures, upzCentroidByCode]);
+
+  const filteredInstitutions = useMemo(() => {
+    if (selectedUpz === 'all') return validatedInstitutions;
+
+    const selectedCode = normalizeUpzCode(selectedUpz);
+    return validatedInstitutions.filter(
+      (inst) => normalizeUpzCode(inst.upzCode) === selectedCode
+    );
+  }, [selectedUpz, validatedInstitutions]);
 
   const upzCentroids = useMemo(() => {
     if (!upzFeatures || upzFeatures.length === 0) return [];
@@ -717,7 +779,7 @@ export const MapaKennedy = () => {
                   setSelectedFeature(null);
                 } else {
                   const indicators =
-                    socialZoneByCode.get(String(code)) ||
+                    socialZoneByCode.get(normalizeUpzCode(code)) ||
                     socialZones.find((z) => String(z.id).includes(String(code).toLowerCase()));
                   if (indicators) {
                     setSelectedFeature({
@@ -775,25 +837,33 @@ export const MapaKennedy = () => {
             <PovertyAccordion />
           </div>
 
-          <div className="sidebar-tabs">
+          <div className="sidebar-section">
+            <h3 className="sidebar-section-title">
+              <span className="sidebar-title-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20v-6M6 20V10M18 20V4" /></svg>
+              </span>
+              Panel Analitico
+            </h3>
+            <div className="sidebar-tabs sidebar-tabs-contained">
+              <button
+                className={`tab-btn ${activeTab === 'summary' ? 'active' : ''}`}
+                onClick={() => setActiveTab('summary')}
+              >
+                Resumen
+              </button>
+              <button
+                className={`tab-btn ${activeTab === 'stats' ? 'active' : ''}`}
+                onClick={() => setActiveTab('stats')}
+              >
+                Estadisticas
+              </button>
+            </div>
             <button
-              className={`tab-btn ${activeTab === 'summary' ? 'active' : ''}`}
-              onClick={() => setActiveTab('summary')}
-            >
-              Resumen
-            </button>
-            <button
-              className={`tab-btn ${activeTab === 'stats' ? 'active' : ''}`}
-              onClick={() => setActiveTab('stats')}
-            >
-              Estadisticas
-            </button>
-            <button
-              className="tab-btn tab-btn-export"
+              className="sources-btn sidebar-export-btn"
               onClick={handleExportCSV}
               title="Exportar datos de instituciones a CSV"
             >
-              CSV
+              Exportar CSV de instituciones
             </button>
           </div>
 
@@ -1018,12 +1088,9 @@ export const MapaKennedy = () => {
                       }}
                       style={(feature) => {
                         const indicators = getIndicatorsForUpz(feature);
-                        const code = String(feature.properties.UPlCodigo);
-                        const fillColor =
-                          upzColorMap.get(code) ||
-                          getZoneColor(
-                            (indicators && indicators.pobrezaMultidimensional) || 0.25
-                          );
+                        const fillColor = getZoneColor(
+                          (indicators && indicators.pobrezaMultidimensional) || 0.25
+                        );
 
                         const baseStyle = {
                           color: 'rgba(15, 23, 42, 0.55)',
@@ -1126,7 +1193,7 @@ export const MapaKennedy = () => {
                                 isUpz: false
                               });
                               // Opcional: enfocar la UPZ a la que pertenece esta institución
-                              if (inst.upzCode) setSelectedUpz(inst.upzCode.replace('UPZ', ''));
+                              if (inst.upzCode) setSelectedUpz(normalizeUpzCode(inst.upzCode));
                             }
                           }}
                         >
@@ -1141,6 +1208,11 @@ export const MapaKennedy = () => {
                                 {inst.phone && <p><span className="popup-label">Teléfono:</span> {inst.phone}</p>}
                                 {inst.hours && <p><span className="popup-label">Horario:</span> {inst.hours}</p>}
                                 {inst.services && <p><span className="popup-label">Servicios:</span> {inst.services}</p>}
+                                {inst.isRelocated && (
+                                  <p>
+                                    <span className="popup-label">Nota:</span> Ubicacion ajustada al centro de la UPZ tras validacion territorial.
+                                  </p>
+                                )}
                                 {inst.web && (
                                   <p><span className="popup-label">Web:</span> <a href={inst.web.startsWith('http') ? inst.web : `https://${inst.web.split(' | ')[0]}`} target="_blank" rel="noopener noreferrer">{inst.web.split(' | ')[0]}</a></p>
                                 )}
