@@ -1,0 +1,4 @@
+# robots.txt — Kennedy: Caracterización Social
+# Permite rastreo completo de la aplicación
+User-agent: *
+Allow: /

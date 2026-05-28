@@ -493,7 +493,14 @@ const MainHeader = () => {
   return (
     <header className="main-header">
       <div className="header-left">
-        <img src={customLogo} alt="Cartografía Social" className="header-custom-logo" />
+        <img
+          src={customLogo}
+          alt="Cartografía Social"
+          className="header-custom-logo"
+          width="500"
+          height="500"
+          decoding="async"
+        />
         <div className="header-brand">
           <span className="header-chip">
             Sistema de Cartografía Social Distrital
@@ -507,19 +514,28 @@ const MainHeader = () => {
           <span className="author-name-header">SARAI YIRETH CORREDOR MIRANDA</span>
           <span className="author-subtext">Trabajo Social — U. La Salle</span>
         </div>
-        <img src={authorAvatar} alt="Sarai" className="author-avatar-img" />
+        <img
+          src={authorAvatar}
+          alt="Foto de Sarai Yireth Corredor Miranda"
+          className="author-avatar-img"
+          width="430"
+          height="430"
+          decoding="async"
+        />
       </div>
     </header>
   );
 };
 
-const Switch = ({ checked, onChange, id }) => (
+// ariaLabel connects the toggle to its visible text for screen readers
+const Switch = ({ checked, onChange, id, ariaLabel }) => (
   <label className="switch" htmlFor={id}>
     <input
       type="checkbox"
       id={id}
       checked={checked}
       onChange={(e) => onChange(e.target.checked)}
+      aria-label={ariaLabel}
     />
     <span className="slider"></span>
   </label>
@@ -535,6 +551,7 @@ export const MapaKennedy = () => {
   const [showPoverty, setShowPoverty] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSourcesModalOpen, setIsSourcesModalOpen] = useState(false);
+  const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
 
   // Cargar GeoJSON de UPZ de salud y quedarnos solo con las de la localidad de Kennedy
   useEffect(() => {
@@ -745,7 +762,7 @@ export const MapaKennedy = () => {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' }}>
         <div className="loading-spinner" style={{ border: '4px solid #cbd5e1', borderTop: '4px solid #2563eb', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite', marginBottom: '15px' }}></div>
-        <h2 style={{ color: '#0f172a' }}>Cargando datos espaciales...</h2>
+        <p role="status" style={{ color: '#0f172a', margin: 0, fontSize: '1rem', fontWeight: 600 }}>Cargando datos espaciales…</p>
         <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -754,18 +771,53 @@ export const MapaKennedy = () => {
   return (
     <div className="layout-root">
       <MainHeader />
-      <div className="layout-content">
-        {/* Panel lateral de información */}
-        <aside className="sidebar">
+      {/* Overlay oscuro: cierra el panel al tocar fuera en móvil */}
+      <div
+        className={`mobile-overlay${isMobilePanelOpen ? ' is-visible' : ''}`}
+        onClick={() => setIsMobilePanelOpen(false)}
+        aria-hidden="true"
+      />
+
+      {/* FAB: visible solo en móvil, abre el Bottom Sheet */}
+      <button
+        className="mobile-fab"
+        onClick={() => setIsMobilePanelOpen(true)}
+        aria-expanded={isMobilePanelOpen}
+        aria-haspopup="dialog"
+        aria-label="Abrir panel de análisis"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 20v-6M6 20V10M18 20V4"/>
+        </svg>
+        Análisis
+      </button>
+
+      <main className="layout-content">
+        {/* Panel lateral — en móvil se convierte en Bottom Sheet */}
+        <aside
+          className={`sidebar${isMobilePanelOpen ? ' is-open' : ''}`}
+          aria-label="Panel de análisis territorial"
+        >
+          {/* Handle visual + botón cierre para el Bottom Sheet en móvil */}
+          <div className="sheet-topbar">
+            <div className="sheet-handle" aria-hidden="true" />
+            <button
+              className="sheet-close-btn"
+              onClick={() => setIsMobilePanelOpen(false)}
+              aria-label="Cerrar panel de análisis"
+            >
+              ✕
+            </button>
+          </div>
           {/* Header movido a la parte superior principal */}
 
           <div className="sidebar-section">
-            <h3 className="sidebar-section-title">
+            <h2 className="sidebar-section-title">
               <span className="sidebar-title-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
               </span>
               Filtros de Análisis
-            </h3>
+            </h2>
             <label className="sidebar-select-label" htmlFor="upz-select">
               Explorar Territorio
             </label>
@@ -814,12 +866,12 @@ export const MapaKennedy = () => {
           </div>
 
           <div className="sidebar-section">
-            <h3 className="sidebar-section-title">
+            <h2 className="sidebar-section-title">
               <span className="sidebar-title-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>
               </span>
               Capas de Información
-            </h3>
+            </h2>
             <div className="layer-item">
               <div className="layer-label">
                 <span className="author-icon" style={{ color: '#2563eb' }}>
@@ -827,7 +879,7 @@ export const MapaKennedy = () => {
                 </span>
                 <span>Instituciones Públicas</span>
               </div>
-              <Switch checked={showInstitutions} onChange={setShowInstitutions} id="sw-inst" />
+              <Switch checked={showInstitutions} onChange={setShowInstitutions} id="sw-inst" ariaLabel="Mostrar instituciones públicas en el mapa" />
             </div>
             <div className="layer-item">
               <div className="layer-label">
@@ -836,17 +888,17 @@ export const MapaKennedy = () => {
                 </span>
                 <span>Cartografía de Pobreza</span>
               </div>
-              <Switch checked={showPoverty} onChange={setShowPoverty} id="sw-poverty" />
+              <Switch checked={showPoverty} onChange={setShowPoverty} id="sw-poverty" ariaLabel="Mostrar cartografía de pobreza en el mapa" />
             </div>
           </div>
 
           <div className="sidebar-section">
-            <h3 className="sidebar-section-title">
+            <h2 className="sidebar-section-title">
               <span className="sidebar-title-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20v-6M6 20V10M18 20V4" /></svg>
               </span>
-              Panel Analitico
-            </h3>
+              Panel Analítico
+            </h2>
             <div className="sidebar-tabs sidebar-tabs-contained">
               <button
                 className={`tab-btn ${activeTab === 'summary' ? 'active' : ''}`}
@@ -940,7 +992,7 @@ export const MapaKennedy = () => {
                   </div>
 
                   <div className="summary-block">
-                    <h4 className="summary-title">Pobreza y desigualdad</h4>
+                    <h3 className="summary-title">Pobreza y desigualdad</h3>
                     <p><strong>Indice de Gini:</strong> {kennedySummary.gini}</p>
                     <p>
                       <strong>Pobreza Bogota (2023):</strong><br />
@@ -958,7 +1010,7 @@ export const MapaKennedy = () => {
                   </div>
 
                   <div className="summary-block">
-                    <h4 className="summary-title">Empleo jovenes (18-28 anos)</h4>
+                    <h3 className="summary-title">Empleo jovenes (18-28 anos)</h3>
                     <ul className="summary-list">
                       <li>Informalidad/Precariedad: {kennedySummary.jovenes18_28.informalidad}</li>
                       <li>Formacion Universitaria: {kennedySummary.jovenes18_28.universitaria}</li>
@@ -967,7 +1019,7 @@ export const MapaKennedy = () => {
                   </div>
 
                   <div className="summary-block">
-                    <h4 className="summary-title">Seguridad alimentaria</h4>
+                    <h3 className="summary-title">Seguridad alimentaria</h3>
                     <ul className="summary-list">
                       <li>Gestantes bajo peso: {kennedySummary.seguridadAlimentaria.bajoPesoGestantes}</li>
                       <li>Gestantes exceso peso: {kennedySummary.seguridadAlimentaria.excesoPesoGestantes}</li>
@@ -998,20 +1050,25 @@ export const MapaKennedy = () => {
           )}
 
           <div className="sidebar-section">
-            <h3 className="sidebar-section-title">
+            <h2 className="sidebar-section-title">
               <span className="sidebar-title-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20v-6M6 20V10M18 20V4" /></svg>
               </span>
               Datos de Territorio
-            </h3>
+            </h2>
             <PovertyAccordion />
           </div>
         </aside>
 
         {/* Modal de Fuentes */}
+        {/* role="dialog" + aria-modal isolate the dialog for screen readers */}
         <div
           id="sources-modal"
           className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
+          aria-hidden={!isSourcesModalOpen}
           style={{ display: isSourcesModalOpen ? 'flex' : 'none' }}
           onClick={(e) => {
             if (e.target.id === 'sources-modal') setIsSourcesModalOpen(false);
@@ -1019,12 +1076,18 @@ export const MapaKennedy = () => {
         >
           <div className="modal-card shadow-lg">
             <div className="modal-header">
-              <h3>📚 Fuentes y Referencias Académicas</h3>
-              <button className="modal-close" onClick={() => setIsSourcesModalOpen(false)}>&times;</button>
+              <h2 id="modal-title">📚 Fuentes y Referencias Académicas</h2>
+              <button
+                className="modal-close"
+                onClick={() => setIsSourcesModalOpen(false)}
+                aria-label="Cerrar ventana de fuentes"
+              >
+                &times;
+              </button>
             </div>
             <div className="modal-body">
               <div className="source-section">
-                <h4>📈 FUENTES DE DATOS ESTADÍSTICOS</h4>
+                <h3>📈 FUENTES DE DATOS ESTADÍSTICOS</h3>
                 <p><strong>[1] DANE – Encuesta de Calidad de Vida (ECV) 2023:</strong> Indicadores de pobreza monetaria, multidimensional y desigualdad. <a href="https://www.dane.gov.co/index.php/estadisticas-por-tema/pobreza-y-condiciones-de-vida" target="_blank" rel="noopener noreferrer">Enlace</a></p>
                 <p><strong>[2] DANE – Medición de Pobreza Monetaria y Multidimensional Colombia 2023:</strong> Gini 0,530 | Pobreza moderada 23,7% | Extrema 5,5% | IPM 3,6%. <a href="https://www.dane.gov.co/index.php/estadisticas-por-tema/pobreza-y-condiciones-de-vida/pobreza-y-desigualdad" target="_blank" rel="noopener noreferrer">Enlace</a></p>
                 <p><strong>[3] Sisbén IV – Departamento Nacional de Planeación (DNP):</strong> Corte: marzo 2025 | Kennedy: 474.049 registros. <a href="https://www.sisben.gov.co" target="_blank" rel="noopener noreferrer">www.sisben.gov.co</a></p>
@@ -1032,7 +1095,7 @@ export const MapaKennedy = () => {
                 <p><strong>[5] Secretaría Distrital de Salud de Bogotá:</strong> Diagnóstico de Salud – Localidad Kennedy 2023-2024. <a href="https://saludcapital.gov.co" target="_blank" rel="noopener noreferrer">saludcapital.gov.co</a></p>
               </div>
               <div className="source-section">
-                <h4>🏛️ FUENTES INSTITUCIONALES (verificadas)</h4>
+                <h3>🏛️ FUENTES INSTITUCIONALES (verificadas)</h3>
                 <p><strong>[6] Alcaldía Local de Kennedy:</strong> Transversal 78K No. 41A-04 Sur | (601) 448 14 00 ext. 8100. Lunes a viernes 7:00 a.m. a 4:30 p.m. <a href="https://bogota.gov.co/servicios/puntos-de-atencion/alcaldia-local-kennedy" target="_blank" rel="noopener noreferrer">Fuente directa</a></p>
                 <p><strong>[7] SuperCADE Américas (Kennedy - Tintalito):</strong> Carrera 86 No. 43-55 Sur | Tel: 195. Lunes a viernes 7:00 a.m. a 4:30 p.m. | Sábados 8:00 a.m. a 12:00 m. <a href="https://bogota.gov.co/servicios/cades/supercade-americas" target="_blank" rel="noopener noreferrer">Fuente directa</a></p>
                 <p><strong>[8] Subred Integrada de Servicios de Salud Sur Occidente E.S.E.:</strong> (incluye Hospital Occidente de Kennedy, U.S.S. 29 Kennedy, U.S.S. 79 Carvajal, U.S.S. 68 Britalia y otras unidades). Citas: (601) 3795180 | Urgencias 24h. <a href="https://subredsuroccidente.gov.co" target="_blank" rel="noopener noreferrer">subredsuroccidente.gov.co</a></p>
@@ -1243,7 +1306,7 @@ export const MapaKennedy = () => {
 
           <MapLegend />
         </div>
-      </div>
+      </main>
     </div>
   );
 };

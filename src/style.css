@@ -799,15 +799,52 @@ input:checked+.slider:before {
   font-style: italic;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   TOUCH TARGETS — global minimum 44×44 px (WCAG 2.5.5)
+   ─────────────────────────────────────────────────────────────*/
+
+/* Switch: visual stays 38×20 px but tap area grows to 44 px */
+.switch {
+  min-height: 44px;
+  align-items: center;
+}
+
+/* Tab buttons and sources button: ensure 44 px minimum height */
+.tab-btn,
+.sources-btn,
+.sources-btn-muted {
+  min-height: 44px;
+}
+
+/* Modal close button */
+.modal-close {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+.modal-close:hover {
+  background: #f1f5f9;
+}
+
+/* Legend toggle */
+.legend-toggle {
+  min-height: 44px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TABLET  (≤ 1180 px)
+   ─────────────────────────────────────────────────────────────*/
 @media (max-width: 1180px) {
   .layout-content {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(260px, 320px) 1fr;
   }
 
   .sidebar {
     width: 100%;
-    max-height: none;
-    border-radius: 18px;
   }
 
   .map-shell {
@@ -816,6 +853,15 @@ input:checked+.slider:before {
 }
 
 @media (max-width: 900px) {
+  .layout-content {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-radius: 18px;
+    max-height: 340px;
+  }
+
   .legend-floating {
     right: 12px;
     bottom: 12px;
@@ -832,27 +878,212 @@ input:checked+.slider:before {
   }
 }
 
-@media (max-width: 680px) {
-  .legend-floating {
-    position: static;
-    width: 100%;
-    margin: 0 auto;
-    border-radius: 12px;
+/* ─────────────────────────────────────────────────────────────
+   MOBILE (≤ 768 px) — map full-screen + Bottom Sheet
+   ─────────────────────────────────────────────────────────────*/
+@media (max-width: 768px) {
+
+  /* Remove outer padding so map bleeds edge-to-edge */
+  .layout-root {
+    padding: 0;
+    gap: 0;
   }
 
+  /* Compact header, flush to top */
   .main-header {
-    flex-wrap: wrap;
+    border-radius: 0;
+    padding: 8px 12px;
+    min-height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 200;
   }
 
-  .header-left {
+  /* Hide author block — save space on small screens */
+  .header-author-compact {
+    display: none;
+  }
+
+  /* Logo and title sizing */
+  .header-custom-logo {
+    height: 36px;
+  }
+
+  .header-title {
+    font-size: 0.95rem;
+  }
+
+  .header-subtitle {
+    display: none;
+  }
+
+  /* Single-column: map fills everything below header */
+  .layout-content {
+    display: block;
+    height: calc(100dvh - 56px); /* dvh adapts to browser chrome on mobile */
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Map shell: full bleed, no border-radius */
+  .map-shell {
     width: 100%;
+    height: 100%;
+    border-radius: 0;
+    min-height: 0;
   }
 
+  /* Sidebar → Bottom Sheet
+     Hidden below the viewport by default; slides up when .is-open is added */
   .sidebar {
-    border-radius: 14px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 82vh;
+    height: auto;
+    border-radius: 20px 20px 0 0;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 5000;
+    box-shadow: 0 -8px 40px rgba(15, 23, 42, 0.22);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* Prevent sidebar from affecting desktop grid on mobile */
+    flex-shrink: unset;
   }
 
-  .legend-toggle-text {
+  .sidebar.is-open {
+    transform: translateY(0);
+  }
+
+  /* Legend: repositioned above the FAB */
+  .legend-floating {
+    bottom: 84px;
+    right: 12px;
+    width: auto;
+    max-width: calc(100% - 24px);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   BOTTOM SHEET INTERNAL ELEMENTS
+   ─────────────────────────────────────────────────────────────*/
+
+/* Topbar with drag handle + close button — only relevant on mobile */
+.sheet-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 4px;
+  /* Hidden on desktop — close btn has no meaning there */
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .sheet-topbar {
+    visibility: visible;
+    height: auto;
+    overflow: visible;
+  }
+}
+
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: #cbd5e1;
+  border-radius: 2px;
+  margin: 0 auto;
+  flex: 1;
+}
+
+.sheet-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 1.1rem;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
+}
+
+.sheet-close-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MOBILE OVERLAY — darkens map behind the open Bottom Sheet
+   ─────────────────────────────────────────────────────────────*/
+.mobile-overlay {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 4999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s;
+  }
+
+  .mobile-overlay.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   FAB — Floating Action Button, visible only on mobile
+   ─────────────────────────────────────────────────────────────*/
+.mobile-fab {
+  display: none; /* hidden on desktop / tablet */
+}
+
+@media (max-width: 768px) {
+  .mobile-fab {
+    display: flex;
+    position: fixed;
+    bottom: 24px;
+    right: 16px;
+    z-index: 4998;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--color-accent);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 0 20px;
+    min-height: 48px;       /* above 44 px minimum */
+    min-width: 48px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.40);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .mobile-fab:hover,
+  .mobile-fab:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(37, 99, 235, 0.50);
+  }
+
+  /* Hide FAB when the sheet is open (close btn inside sheet handles it) */
+  .mobile-fab[aria-expanded='true'] {
     display: none;
   }
 }
