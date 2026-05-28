@@ -1,5 +1,5 @@
 ﻿// src/MapaKennedy.jsx
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import authorAvatar from './assets/author_avatar.png';
 import customLogo from './assets/social_cartography_logo.png';
 import {
@@ -16,6 +16,7 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import L from 'leaflet';
+import Chart from 'chart.js/auto';
 import {
   kennedyCenter,
   socialZones,
@@ -23,6 +24,20 @@ import {
   getZoneColor,
   kennedySummary,
 } from './mockData';
+
+// Escape HTML — defensa en profundidad. Aunque los datos vengan de mockData
+// (confiable), nunca embebemos strings en innerHTML sin sanitizar.
+const escapeHtml = (value) =>
+  String(value ?? '').replace(/[&<>"']/g, (ch) => {
+    switch (ch) {
+      case '&': return '&amp;';
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '"': return '&quot;';
+      case "'": return '&#39;';
+      default: return ch;
+    }
+  });
 
 // Iconos personalizados para instituciones con SVG (Lucide-style)
 const createIcon = (color, svgPath) =>
@@ -246,10 +261,9 @@ const StatsCharts = ({ selectedFeature }) => {
   const radarChart = useRef(null);
 
   useEffect(() => {
-    if (!window.Chart) return;
-
     if (selectedFeature && selectedFeature.isUpz) {
       // Gráfica Radial (Radar) para comparar UPZ vs Kennedy
+      if (!radarRef.current) return;
       const radarCtx = radarRef.current.getContext('2d');
       if (radarChart.current) radarChart.current.destroy();
 
@@ -262,7 +276,7 @@ const StatsCharts = ({ selectedFeature }) => {
       // Promedios aproximados de la localidad
       const avgMetrics = [31, 25, 56, 14];
 
-      radarChart.current = new window.Chart(radarCtx, {
+      radarChart.current = new Chart(radarCtx, {
         type: 'radar',
         data: {
           labels: ['Pobreza Multid.', 'Pobreza Monetaria', 'Empleo Informal', 'Tasa Desempleo'],
@@ -294,9 +308,10 @@ const StatsCharts = ({ selectedFeature }) => {
       });
     } else {
       // Gráfica 1: Distribución Sisbén IV
+      if (!sisbenRef.current) return;
       const sisbenCtx = sisbenRef.current.getContext('2d');
       if (sisbenChart.current) sisbenChart.current.destroy();
-      sisbenChart.current = new window.Chart(sisbenCtx, {
+      sisbenChart.current = new Chart(sisbenCtx, {
         type: 'doughnut',
         data: {
           labels: ['Grupo A (Extrema)', 'Grupo B (Moderada)', 'Grupo C (Vulnerabilidad)', 'Grupo D (No pobres)'],
@@ -317,9 +332,10 @@ const StatsCharts = ({ selectedFeature }) => {
       });
 
       // Gráfica 2: Empleo Jóvenes
+      if (!youthRef.current) return;
       const youthCtx = youthRef.current.getContext('2d');
       if (youthChart.current) youthChart.current.destroy();
-      youthChart.current = new window.Chart(youthCtx, {
+      youthChart.current = new Chart(youthCtx, {
         type: 'bar',
         data: {
           labels: ['Informal', 'Formal', 'Sin U.', 'Con U.'],
@@ -553,57 +569,72 @@ export const MapaKennedy = () => {
   const [isSourcesModalOpen, setIsSourcesModalOpen] = useState(false);
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
 
-  // Cargar GeoJSON de UPZ de salud y quedarnos solo con las de la localidad de Kennedy
+  // ESC cierra capas modales (estándar WAI-ARIA para dialog patterns)
   useEffect(() => {
-    const loadUpz = async () => {
+    if (!isSourcesModalOpen && !isMobilePanelOpen) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setIsSourcesModalOpen(false);
+        setIsMobilePanelOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isSourcesModalOpen, isMobilePanelOpen]);
+
+  const [loadError, setLoadError] = useState(null);
+
+  // Carga GeoJSON con AbortController (cancelable en unmount) y timeout 15s
+  // para evitar requests colgados. Mantiene la app responsive ante red lenta.
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    const allowedNames = new Set([
+      'KENNEDY CENTRAL', 'AMERICAS', 'CARVAJAL', 'BAVARIA',
+      'PATIO BONITO', 'TINTAL NORTE', 'CALANDAIMA', 'CORABASTOS',
+      'CASTILLA', 'TIMIZA', 'GRAN BRITALIA', 'LAS MARGARITAS',
+    ]);
+
+    (async () => {
       try {
-        const res = await fetch('/saludupz.geojson');
-        if (!res.ok) {
-          console.error('No se encontró /saludupz.geojson (HTTP ' + res.status + ')');
-          return;
-        }
+        const res = await fetch('/saludupz.geojson', {
+          signal: controller.signal,
+          headers: { Accept: 'application/json' },
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const text = await res.text();
-        // Si por error devuelve HTML (por ejemplo index.html), evitamos romper el mapa
         if (text.trim().startsWith('<')) {
-          console.error('El recurso /saludupz.geojson no es JSON válido (parece HTML).');
-          return;
+          throw new Error('Respuesta no JSON');
         }
 
         const data = JSON.parse(text);
-        if (!data || !Array.isArray(data.features)) return;
-
-        // Solo las 12 UPZ de interés, identificadas por su nombre
-        const allowedNames = new Set([
-          'KENNEDY CENTRAL',
-          'AMERICAS',
-          'CARVAJAL',
-          'BAVARIA',
-          'PATIO BONITO',
-          'TINTAL NORTE',
-          'CALANDAIMA',
-          'CORABASTOS',
-          'CASTILLA',
-          'TIMIZA',
-          'GRAN BRITALIA',
-          'LAS MARGARITAS',
-        ]);
+        if (!data || !Array.isArray(data.features)) {
+          throw new Error('Estructura GeoJSON inválida');
+        }
 
         const selectedFeatures = data.features.filter((f) => {
-          if (!f.properties) return false;
-          const name = String(f.properties.UPlNombre || '').toUpperCase();
+          const name = String(f?.properties?.UPlNombre || '').toUpperCase();
           return allowedNames.has(name);
         });
 
         setUpzFeatures(selectedFeatures);
       } catch (err) {
-        console.error('Error cargando saludupz.geojson', err);
+        if (err.name !== 'AbortError') {
+          setLoadError('No se pudieron cargar los datos espaciales.');
+        }
       } finally {
+        clearTimeout(timeoutId);
         setIsLoading(false);
       }
-    };
+    })();
 
-    loadUpz();
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, []);
 
   const socialZoneByName = useMemo(() => {
@@ -628,30 +659,20 @@ export const MapaKennedy = () => {
     return map;
   }, []);
 
-  const handleExportCSV = () => {
-    const headers = ['Tipo', 'Nombre', 'UPZ', 'Direccion', 'Telefono', 'Horario'];
-    const rows = filteredInstitutions.map(inst => [
-      inst.type,
-      `"${inst.name}"`,
-      inst.upzCode,
-      `"${inst.address || ''}"`,
-      `"${inst.phone || ''}"`,
-      `"${inst.hours || ''}"`
-    ]);
-    const csvContent = '\uFEFF'
-      + headers.join(',') + '\n'
-      + rows.map(e => e.join(',')).join('\n');
+  // Sanitiza una celda CSV: previene CSV injection (formula execution en Excel)
+  // y escapa comillas seg\u00FAn RFC 4180.
+  const csvCell = useCallback((value) => {
+    const s = String(value ?? '');
+    // Prefija con ap\u00F3strofe si empieza con caracteres de f\u00F3rmula
+    const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+    // Escapa comillas dobles duplic\u00E1ndolas y envuelve si contiene , " o newline
+    if (/[",\n\r]/.test(safe)) {
+      return `"${safe.replace(/"/g, '""')}"`;
+    }
+    return safe;
+  }, []);
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const downloadUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', downloadUrl);
-    link.setAttribute('download', `instituciones_kennedy_${selectedUpz}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(downloadUrl);
-  };
+  // handleExportCSV est\u00E1 m\u00E1s abajo, tras filteredInstitutions (evita TDZ en deps)
 
   // Opciones de UPZ basadas en el GeoJSON real
   const upzOptions = useMemo(() => {
@@ -735,6 +756,33 @@ export const MapaKennedy = () => {
     );
   }, [selectedUpz, validatedInstitutions]);
 
+  const handleExportCSV = useCallback(() => {
+    const headers = ['Tipo', 'Nombre', 'UPZ', 'Dirección', 'Teléfono', 'Horario'];
+    const rows = filteredInstitutions.map((inst) => [
+      csvCell(inst.type),
+      csvCell(inst.name),
+      csvCell(inst.upzCode),
+      csvCell(inst.address || ''),
+      csvCell(inst.phone || ''),
+      csvCell(inst.hours || ''),
+    ]);
+    const csvContent =
+      '﻿' +
+      headers.map(csvCell).join(',') + '\n' +
+      rows.map((r) => r.join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `instituciones_kennedy_${selectedUpz}.csv`;
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(downloadUrl);
+  }, [filteredInstitutions, selectedUpz, csvCell]);
+
   const upzCentroids = useMemo(() => {
     if (!upzFeatures || upzFeatures.length === 0) return [];
 
@@ -760,16 +808,32 @@ export const MapaKennedy = () => {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' }}>
-        <div className="loading-spinner" style={{ border: '4px solid #cbd5e1', borderTop: '4px solid #2563eb', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite', marginBottom: '15px' }}></div>
-        <p role="status" style={{ color: '#0f172a', margin: 0, fontSize: '1rem', fontWeight: 600 }}>Cargando datos espaciales…</p>
-        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      <div className="app-loading" role="status" aria-live="polite">
+        <div className="spinner" aria-hidden="true" />
+        <p>Cargando datos espaciales…</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="app-error" role="alert">
+        <h1>No se pudieron cargar los datos</h1>
+        <p>{loadError}</p>
+        <button onClick={() => window.location.reload()} className="sources-btn">
+          Reintentar
+        </button>
       </div>
     );
   }
 
   return (
     <div className="layout-root">
+      {/* Skip link — primer foco del documento para usuarios de teclado/AT */}
+      <a href="#main-content" className="skip-link">
+        Saltar al contenido principal
+      </a>
+
       <MainHeader />
       {/* Overlay oscuro: cierra el panel al tocar fuera en móvil */}
       <div
@@ -792,7 +856,7 @@ export const MapaKennedy = () => {
         Análisis
       </button>
 
-      <main className="layout-content">
+      <main id="main-content" className="layout-content" tabIndex="-1">
         {/* Panel lateral — en móvil se convierte en Bottom Sheet */}
         <aside
           className={`sidebar${isMobilePanelOpen ? ' is-open' : ''}`}
@@ -1200,20 +1264,18 @@ export const MapaKennedy = () => {
 
                         layer.bindPopup(() => {
                           const zone = indicators;
+                          // Escape defensivo: previene XSS si la fuente de datos
+                          // alguna vez se vuelve externa o user-controlled.
                           return (
                             `<div style="font-size:0.85rem;">
-                            <strong>${zone.name}</strong><br />
-                            Estrato predominante: ${zone.estrato}<br />
-                            Empleo formal: ${formatPercent(zone.empleoFormal)}<br />
-                            Empleo informal: ${formatPercent(zone.empleoInformal)}<br />
-                            Tasa de desempleo: ${formatPercent(zone.tasaDesempleo)}<br />
-                            Pobreza multidimensional: ${formatPercent(
-                              zone.pobrezaMultidimensional
-                            )} (DANE)<br />
-                            Pobreza monetaria: ${formatPercent(
-                              zone.pobrezaMonetaria
-                            )} (DANE)<br />
-                            <small>Fuente: ${zone.fuente}</small>
+                            <strong>${escapeHtml(zone.name)}</strong><br />
+                            Estrato predominante: ${escapeHtml(zone.estrato)}<br />
+                            Empleo formal: ${escapeHtml(formatPercent(zone.empleoFormal))}<br />
+                            Empleo informal: ${escapeHtml(formatPercent(zone.empleoInformal))}<br />
+                            Tasa de desempleo: ${escapeHtml(formatPercent(zone.tasaDesempleo))}<br />
+                            Pobreza multidimensional: ${escapeHtml(formatPercent(zone.pobrezaMultidimensional))} (DANE)<br />
+                            Pobreza monetaria: ${escapeHtml(formatPercent(zone.pobrezaMonetaria))} (DANE)<br />
+                            <small>Fuente: ${escapeHtml(zone.fuente)}</small>
                           </div>`
                           );
                         });

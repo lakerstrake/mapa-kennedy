@@ -3,49 +3,64 @@
 
 <head>
   <meta charset="UTF-8" />
-  <!-- lang="es": el contenido es en español; lectores de pantalla usan este atributo para la pronunciación correcta -->
-
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- SEO: título descriptivo mejora CTR en resultados de búsqueda -->
-  <title>Kennedy: Caracterización Social | Cartografía Distrital</title>
-
-  <!-- SEO: descripción rica con palabras clave relevantes (localidad, vulnerabilidad, Bogotá) -->
-  <meta name="description" content="Herramienta de cartografía social distrital para el análisis de vulnerabilidad, pobreza multidimensional y presencia institucional en la Localidad No. 8 de Bogotá D.C. Datos: DANE 2023, Sisbén IV 2025, SDP." />
-
-  <!-- SEO: permite rastreo explícito -->
-  <meta name="robots" content="index, follow" />
-
-  <!-- PWA / UI: color de la barra del navegador en móvil -->
-  <meta name="theme-color" content="#2563eb" />
-
-  <!-- Open Graph: mejora la vista previa al compartir en redes sociales -->
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="Kennedy: Caracterización Social" />
-  <meta property="og:description" content="Cartografía social distrital: análisis de vulnerabilidad y presencia institucional en la Localidad de Kennedy, Bogotá D.C." />
-
-  <!-- Performance: pre-conectar dominios de terceros antes de que React los solicite -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-
-  <!-- Fuentes: display=swap evita FOIT (flash of invisible text) -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
   <!--
-    Performance: `defer` elimina el bloqueo de renderizado.
-    Sin defer, el navegador detiene completamente el parseo del HTML hasta que
-    chart.js (~200 KiB) se descarga y ejecuta — causa directa del LCP >11s.
-    Con defer: descarga en paralelo, ejecuta tras el parseo del DOM pero antes
-    del módulo principal (los scripts defer se ejecutan en orden de documento,
-    y los módulos type="module" van al final de esa misma cola).
+    Content Security Policy — defensa en profundidad contra XSS y data-injection.
+    'unsafe-inline' en style-src es necesario para Leaflet y para los estilos
+    dinámicos de los marcadores (color por institución). 'unsafe-inline' en
+    script-src es necesario para los inline styles de React/Leaflet en runtime.
+    img-src: data: para iconos SVG inline de Leaflet; blob: para CSV export.
   -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <meta http-equiv="Content-Security-Policy"
+    content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline';
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      img-src 'self' data: blob: https://*.tile.openstreetmap.org https://server.arcgisonline.com;
+      font-src 'self' https://fonts.gstatic.com;
+      connect-src 'self';
+      frame-ancestors 'none';
+      base-uri 'self';
+      form-action 'self';
+    " />
+
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#0f172a" />
+
+  <title>Kennedy: Caracterización Social | Cartografía Distrital Bogotá</title>
+
+  <meta name="description"
+    content="Cartografía social distrital de la Localidad de Kennedy, Bogotá. Análisis interactivo de vulnerabilidad, pobreza multidimensional y presencia institucional. Fuentes oficiales: DANE 2023, Sisbén IV 2025, SDP." />
+  <meta name="robots" content="index, follow" />
+  <meta name="author" content="Sarai Yireth Corredor Miranda" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="es_CO" />
+  <meta property="og:title" content="Kennedy: Caracterización Social" />
+  <meta property="og:description"
+    content="Análisis interactivo de vulnerabilidad social y presencia institucional en la Localidad de Kennedy, Bogotá." />
+
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+
+  <!-- Preconnect: negocia TLS de fuentes en paralelo al parseo del HTML -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <!-- display=swap evita FOIT; subset acotado a los pesos realmente usados -->
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
 </head>
 
 <body>
   <div id="app"></div>
+  <noscript>
+    <p style="padding:2rem;text-align:center;font-family:system-ui,sans-serif;">
+      Esta aplicación requiere JavaScript habilitado para mostrar la cartografía interactiva.
+    </p>
+  </noscript>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 

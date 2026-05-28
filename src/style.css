@@ -1,38 +1,60 @@
 :root {
+  /* Color tokens — paleta restringida para look profesional */
   --color-bg-page: #f3f4f6;
   --color-bg-panel: #ffffff;
   --color-bg-panel-alt: #f9fafb;
   --color-border-subtle: #e5e7eb;
+  --color-border-strong: #cbd5e1;
   --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
   --color-accent-soft: #eff6ff;
   --color-text-main: #0f172a;
   --color-text-muted: #475569;
+  --color-text-subtle: #64748b;
   --color-badge-bg: #eff6ff;
   --color-badge-text: #1d4ed8;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fef2f2;
+  --color-focus-ring: rgba(37, 99, 235, 0.45);
+
+  /* Shadows — sistema escalonado */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 6px 18px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
   --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.08);
 
-  /* Spacing System - Modular Scale */
+  /* Radii — escala unificada */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* Spacing — escala modular 4-8-16 */
   --space-xs: 0.25rem;
-  /* 4px */
   --space-sm: 0.5rem;
-  /* 8px */
   --space-md: 1rem;
-  /* 16px */
   --space-lg: 1.5rem;
-  /* 24px */
   --space-xl: 2rem;
-  /* 32px */
   --space-2xl: 3rem;
-  /* 48px */
+
+  /* Motion — duraciones y curvas consistentes */
+  --duration-fast: 0.15s;
+  --duration-base: 0.25s;
+  --duration-slow: 0.35s;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Typography */
-  --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-main: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   font-family: var(--font-main);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
 }
 
 *,
@@ -1659,4 +1681,162 @@ input:checked+.slider:before {
 
 .legend-ramp {
   min-height: 10px;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   PULIDO FINAL — A11y, micro-interacciones, estados globales
+   ═════════════════════════════════════════════════════════════ */
+
+/* Focus-visible: anillo de foco unificado sólo para navegación por teclado.
+   No aparece en clicks de ratón — UX limpia sin sacrificar accesibilidad. */
+:where(button, a, [role="button"], input, select, textarea, [tabindex]):focus {
+  outline: none;
+}
+
+:where(button, a, [role="button"], input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* El switch (input checkbox oculto) propaga el foco al slider visible */
+.switch input:focus-visible + .slider {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+/* Skip link — primer tab del documento salta al main */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: var(--space-md);
+  background: var(--color-text-main);
+  color: white;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  z-index: 10000;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: top var(--duration-base) var(--ease-out);
+}
+.skip-link:focus-visible {
+  top: var(--space-md);
+}
+
+/* Pantalla de carga global */
+.app-loading {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-md);
+  background: var(--color-bg-page);
+}
+.app-loading p {
+  margin: 0;
+  color: var(--color-text-main);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-border-strong);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+@keyframes spinner-rotate {
+  to { transform: rotate(360deg); }
+}
+
+/* Pantalla de error global */
+.app-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  padding: var(--space-xl);
+  text-align: center;
+  background: var(--color-bg-page);
+}
+.app-error h1 {
+  font-size: 1.25rem;
+  color: var(--color-text-main);
+  margin: 0 0 var(--space-sm);
+}
+.app-error p {
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-lg);
+  max-width: 32rem;
+}
+.app-error .sources-btn {
+  max-width: 200px;
+}
+
+/* Scrollbar sutil en WebKit (Firefox usa scrollbar-width: thin ya definido) */
+.sidebar::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+.sidebar::-webkit-scrollbar-thumb,
+.modal-body::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 4px;
+}
+.sidebar::-webkit-scrollbar-track,
+.modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Botones — hover/active más profesional */
+.sources-btn:active,
+.tab-btn:active,
+.mobile-fab:active {
+  transform: translateY(1px);
+}
+
+/* Modal: anima la entrada para sensación premium */
+.modal-overlay[style*="flex"] .modal-card {
+  animation: modal-in var(--duration-base) var(--ease-out);
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* Reduced motion — respeta preferencias del usuario (WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .spinner {
+    animation: none;
+    border-top-color: var(--color-accent);
+  }
+}
+
+/* Print: oculta UI no esencial */
+@media print {
+  .sidebar,
+  .mobile-fab,
+  .legend-floating,
+  .modal-overlay,
+  .mobile-overlay,
+  .leaflet-control-container {
+    display: none !important;
+  }
+  .layout-root {
+    padding: 0;
+    background: white;
+  }
 }
