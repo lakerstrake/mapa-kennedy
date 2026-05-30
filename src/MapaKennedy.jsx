@@ -557,6 +557,56 @@ const Switch = ({ checked, onChange, id, ariaLabel }) => (
   </label>
 );
 
+// Acordeón accesible: agrupa métricas y permite expandir solo lo necesario.
+// Sigue el patrón WAI-ARIA Disclosure (button + region controlada).
+let accordionSeq = 0;
+const Accordion = ({ title, defaultOpen = false, children }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const idRef = useRef(`acc-${(accordionSeq += 1)}`);
+  const panelId = `${idRef.current}-panel`;
+  const btnId = `${idRef.current}-btn`;
+
+  return (
+    <div className={`accordion${isOpen ? ' is-open' : ''}`}>
+      <h3 className="accordion-heading">
+        <button
+          type="button"
+          id={btnId}
+          className="accordion-btn"
+          aria-expanded={isOpen}
+          aria-controls={panelId}
+          onClick={() => setIsOpen((v) => !v)}
+        >
+          <span className="accordion-title">{title}</span>
+          <svg
+            className="accordion-chevron"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+      </h3>
+      <div
+        id={panelId}
+        role="region"
+        aria-labelledby={btnId}
+        className="accordion-panel"
+        hidden={!isOpen}
+      >
+        <div className="accordion-panel-inner">{children}</div>
+      </div>
+    </div>
+  );
+};
+
 export const MapaKennedy = () => {
   const [selectedFeature, setSelectedFeature] = useState(null);
   const [selectedUpz, setSelectedUpz] = useState('all');
@@ -1055,15 +1105,14 @@ export const MapaKennedy = () => {
                     <div className="summary-kpi"><span className="summary-kpi-label">UPZ</span><strong className="summary-kpi-value">{kennedySummary.upzCount}</strong></div>
                   </div>
 
-                  <div className="summary-block">
-                    <h3 className="summary-title">Pobreza y desigualdad</h3>
-                    <p><strong>Indice de Gini:</strong> {kennedySummary.gini}</p>
+                  <Accordion title="Pobreza y desigualdad" defaultOpen>
+                    <p><strong>Índice de Gini:</strong> {kennedySummary.gini}</p>
                     <p>
-                      <strong>Pobreza Bogota (2023):</strong><br />
+                      <strong>Pobreza Bogotá (2023):</strong><br />
                       Moderada: {kennedySummary.pobrezaBogota.moderada} | Extrema: {kennedySummary.pobrezaBogota.extrema}<br />
                       IPM Multidimensional: {kennedySummary.pobrezaBogota.multidimensional}
                     </p>
-                    <strong>Sisben IV Kennedy (Marzo 2025):</strong>
+                    <strong>Sisbén IV Kennedy (Marzo 2025):</strong>
                     <div className="summary-subtotal">Total: {kennedySummary.sisben.total}</div>
                     <ul className="summary-list">
                       <li>Grupo A (Extrema): {kennedySummary.sisben.grupoA.personas} ({kennedySummary.sisben.grupoA.porcentaje})</li>
@@ -1071,25 +1120,23 @@ export const MapaKennedy = () => {
                       <li>Grupo C (Vulnerabilidad): {kennedySummary.sisben.grupoC.personas} ({kennedySummary.sisben.grupoC.porcentaje})</li>
                       <li>Grupo D (No pobres): {kennedySummary.sisben.grupoD.personas} ({kennedySummary.sisben.grupoD.porcentaje})</li>
                     </ul>
-                  </div>
+                  </Accordion>
 
-                  <div className="summary-block">
-                    <h3 className="summary-title">Empleo jovenes (18-28 anos)</h3>
+                  <Accordion title="Empleo jóvenes (18-28 años)">
                     <ul className="summary-list">
                       <li>Informalidad/Precariedad: {kennedySummary.jovenes18_28.informalidad}</li>
-                      <li>Formacion Universitaria: {kennedySummary.jovenes18_28.universitaria}</li>
+                      <li>Formación Universitaria: {kennedySummary.jovenes18_28.universitaria}</li>
                       <li>Nivel Media (Bachillerato): {kennedySummary.jovenes18_28.media}</li>
                     </ul>
-                  </div>
+                  </Accordion>
 
-                  <div className="summary-block">
-                    <h3 className="summary-title">Seguridad alimentaria</h3>
+                  <Accordion title="Seguridad alimentaria">
                     <ul className="summary-list">
                       <li>Gestantes bajo peso: {kennedySummary.seguridadAlimentaria.bajoPesoGestantes}</li>
                       <li>Gestantes exceso peso: {kennedySummary.seguridadAlimentaria.excesoPesoGestantes}</li>
-                      <li>Retraso talla ninos &lt; 5 anos: {kennedySummary.seguridadAlimentaria.retrasoTallaMenores5}</li>
+                      <li>Retraso talla niños &lt; 5 años: {kennedySummary.seguridadAlimentaria.retrasoTallaMenores5}</li>
                     </ul>
-                  </div>
+                  </Accordion>
 
                   <div className="summary-help">
                     <div className="sidebar-metrics-title">Como leer este mapa</div>
@@ -1222,6 +1269,7 @@ export const MapaKennedy = () => {
                 <LayerGroup>
                   {upzFeatures && showPoverty && (
                     <GeoJSON
+                      key={`upz-${selectedUpz}`}
                       data={{
                         type: 'FeatureCollection',
                         features: upzFeatures,
@@ -1253,8 +1301,42 @@ export const MapaKennedy = () => {
                         const indicators = getIndicatorsForUpz(feature);
                         if (!indicators) return;
 
+                        const code = String(feature.properties.UPlCodigo);
+
+                        // Estilo de reposo (respeta si la UPZ está seleccionada)
+                        const restStyle = () => {
+                          const isSelected =
+                            selectedUpz !== 'all' && code === String(selectedUpz);
+                          return {
+                            weight: isSelected ? 3 : 1.2,
+                            color: isSelected ? '#1e293b' : 'rgba(15, 23, 42, 0.55)',
+                            fillOpacity: isSelected ? 0.7 : 0.45,
+                          };
+                        };
+
+                        // Tooltip rápido: cifra clave sin desviar la mirada al panel
+                        layer.bindTooltip(
+                          `<span class="tt-name">${escapeHtml(indicators.upzName)}</span>` +
+                          `<span class="tt-stat">${escapeHtml(formatPercent(indicators.pobrezaMultidimensional))} pobreza multidim.</span>`,
+                          {
+                            sticky: true,
+                            direction: 'top',
+                            className: 'upz-tooltip',
+                            opacity: 1,
+                          }
+                        );
+
+                        // Hover: resalta el polígono sutilmente
+                        layer.on('mouseover', () => {
+                          layer.setStyle({ weight: 2.5, fillOpacity: 0.7, color: '#1e293b' });
+                          layer.bringToFront();
+                        });
+                        layer.on('mouseout', () => {
+                          layer.setStyle(restStyle());
+                        });
+
                         layer.on('click', () => {
-                          setSelectedUpz(String(feature.properties.UPlCodigo));
+                          setSelectedUpz(code);
                           setSelectedFeature({
                             ...indicators,
                             name: `UPZ ${feature.properties.UPlCodigo} - ${indicators.upzName}`,
