@@ -38,7 +38,7 @@ import {
 } from './components/MapUtils';
 import { AccessibilityBar } from './components/AccessibilityBar';
 
-export const MapaKennedy = () => {
+const MapaKennedy = () => {
   const [selectedFeature, setSelectedFeature] = useState(null);
   const [selectedUpz, setSelectedUpz] = useState('all');
   const [upzFeatures, setUpzFeatures] = useState(null);
@@ -886,3 +886,4 @@ export const MapaKennedy = () => {
     </div>
   );
 };
+export default MapaKennedy;
