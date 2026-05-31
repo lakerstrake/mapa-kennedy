@@ -37,6 +37,7 @@ import {
   formatPercent,
 } from './components/MapUtils';
 import { AccessibilityBar } from './components/AccessibilityBar';
+import { SiteFooter } from './components/SiteFooter';
 
 const MapaKennedy = () => {
   const [selectedFeature, setSelectedFeature] = useState(null);
@@ -600,6 +601,8 @@ const MapaKennedy = () => {
             </h2>
             <PovertyDataSection />
           </div>
+
+          <SiteFooter />
         </aside>
 
         {/* Modal de Fuentes */}

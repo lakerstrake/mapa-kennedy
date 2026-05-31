@@ -2328,3 +2328,94 @@ input:checked+.slider:before {
   .a11y-fab { left: 16px !important; bottom: 80px !important; }
   .a11y-panel { left: 16px !important; right: 16px !important; bottom: 136px !important; min-width: unset !important; }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   FOOTER DEL SITIO — créditos, contacto y metadatos de versión
+   ─────────────────────────────────────────────────────────────*/
+.site-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: var(--space-lg) var(--space-md) var(--space-xl);
+  text-align: center;
+  border-top: 1px solid var(--color-divider);
+}
+
+.site-footer-credit {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.site-footer-brand {
+  color: var(--color-accent);
+  font-weight: 700;
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-in-out);
+}
+.site-footer-brand:hover { color: var(--color-accent-hover); text-decoration: underline; }
+
+.site-footer-contact {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.site-footer-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  transition: color var(--duration-fast) var(--ease-in-out),
+              background var(--duration-fast) var(--ease-in-out);
+}
+.site-footer-icon:hover {
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.site-footer-email {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-in-out);
+}
+.site-footer-email:hover { color: var(--color-accent); text-decoration: underline; }
+
+.site-footer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.site-footer-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-subtle);
+  font-family: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, monospace;
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+}
+
+.site-footer-version {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.10);
+  color: #059669;
+}
+
+[data-theme='dark'] .site-footer-version {
+  background: rgba(16, 185, 129, 0.14);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.30);
+}
