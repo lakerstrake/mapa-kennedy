@@ -1,47 +1,49 @@
-import React, { lazy, Suspense } from 'react';
+import React, { Suspense } from "react";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { AccessibilityProvider } from "./contexts/AccessibilityContext";
 
-// Code-split: Leaflet + react-leaflet + cluster (~400 KiB) load only after
-// the initial paint, eliminating them from the critical JS path.
-const MapaKennedy = lazy(() =>
-  import('./MapaKennedy.jsx').then((m) => ({ default: m.MapaKennedy }))
-);
+const MapaKennedy = React.lazy(() => import("./MapaKennedy"));
 
-const LoadingScreen = () => (
-  <div
-    role="status"
-    aria-label="Cargando aplicación"
-    style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-      width: '100vw',
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: '#f8fafc',
-    }}
-  >
-    <div
-      style={{
-        border: '4px solid #cbd5e1',
-        borderTop: '4px solid #2563eb',
-        borderRadius: '50%',
-        width: '40px',
-        height: '40px',
-        animation: 'spin 1s linear infinite',
-        marginBottom: '15px',
-      }}
-    />
-    <p style={{ color: '#0f172a', margin: 0, fontSize: '1rem', fontWeight: 600 }}>
-      Cargando cartografía…
-    </p>
-    <style>{`@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}`}</style>
-  </div>
-);
+const LoadingScreen = () => {
+  const spinnerStyle = {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    height: "100dvh",
+    width: "100vw",
+    gap: "24px",
+    background: "var(--color-bg-page, #f0f2f5)",
+    color: "var(--color-text-secondary, #475569)",
+    fontFamily: "'Inter', system-ui, sans-serif",
+  };
+  const animStyle = {
+    width: "40px",
+    height: "40px",
+    border: "3px solid var(--color-border, #e2e8f0)",
+    borderTopColor: "var(--color-accent, #2563eb)",
+    borderRadius: "50%",
+    animation: "spin 0.8s linear infinite",
+  };
+  return (
+    <div style={spinnerStyle}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={animStyle} />
+      <div>Cargando cartografía social...</div>
+    </div>
+  );
+};
 
-const App = () => (
-  <Suspense fallback={<LoadingScreen />}>
-    <MapaKennedy />
-  </Suspense>
-);
+const App = () => {
+  return (
+    <ThemeProvider>
+      <AccessibilityProvider>
+        <Suspense fallback={<LoadingScreen />}>
+          <MapaKennedy />
+        </Suspense>
+      </AccessibilityProvider>
+    </ThemeProvider>
+  );
+};
 
 export default App;

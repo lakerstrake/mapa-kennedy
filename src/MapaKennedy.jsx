@@ -36,6 +36,7 @@ import {
   ZoomWatcher,
   formatPercent,
 } from './components/MapUtils';
+import { AccessibilityBar } from './components/AccessibilityBar';
 
 export const MapaKennedy = () => {
   const [selectedFeature, setSelectedFeature] = useState(null);
@@ -880,8 +881,8 @@ export const MapaKennedy = () => {
 
           <MapLegend />
         </div>
+        <AccessibilityBar />
       </main>
     </div>
   );
 };
-
